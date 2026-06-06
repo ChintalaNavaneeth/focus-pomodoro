@@ -12,6 +12,12 @@ This app is designed for deep focus. Once a focus session starts, it takes over 
 - **Emergency Dialer**: You can still access the phone dialer from the lockdown screen in case of emergencies, with a strict 15-second timeout to prevent abuse.
 - **Gen-Z Aesthetics**: Beautiful, brutalist dark-mode UI with a custom dial picker.
 
+## Download & Install
+
+You can download the pre-compiled Android APK directly from the **[Releases page](https://github.com/ChintalaNavaneeth/focus-pomodoro/releases)**.
+
+Download the APK that matches your phone's architecture (usually `arm64-v8a` for most modern Android phones) and install it directly.
+
 ## How to Run Locally
 
 1. Clone the repository.
@@ -21,6 +27,15 @@ This app is designed for deep focus. Once a focus session starts, it takes over 
    ```bash
    flutter run
    ```
+
+### Building the APK locally
+
+If you want to build the APK files yourself for production, run:
+```bash
+flutter build apk --split-per-abi
+```
+The compiled APKs will be generated in the following folder:
+`build/app/outputs/flutter-apk/`
 
 ## FAQ
 
