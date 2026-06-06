@@ -62,9 +62,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         _selectedHours = firstPresetSecs ~/ 3600;
         _selectedMinutes = (firstPresetSecs % 3600) ~/ 60;
         _selectedSeconds = firstPresetSecs % 60;
-        _hoursController.jumpToItem(_selectedHours);
-        _minutesController.jumpToItem(_selectedMinutes);
-        _secondsController.jumpToItem(_selectedSeconds);
+        _hoursController.dispose();
+        _minutesController.dispose();
+        _secondsController.dispose();
+        _hoursController = FixedExtentScrollController(initialItem: _selectedHours);
+        _minutesController = FixedExtentScrollController(initialItem: _selectedMinutes);
+        _secondsController = FixedExtentScrollController(initialItem: _selectedSeconds);
       });
     }
 
