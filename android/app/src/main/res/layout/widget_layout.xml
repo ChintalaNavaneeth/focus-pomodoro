@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="@drawable/widget_background"
+    android:gravity="center_vertical"
+    android:paddingStart="14dp"
+    android:paddingEnd="10dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
+    <!-- Left side: text -->
+    <TextView
+        android:id="@+id/widget_timer_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Focus"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:letterSpacing="-0.02" />
+
+    <!-- Divider line -->
+    <ImageView
+        android:layout_width="1dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="10dp"
+        android:background="#333333" />
+
+    <!--
+        App icon — this IS the button.
+        The entire ImageButton is the click target.
+        Clicking it sends the START_WIDGET_TIMER broadcast.
+    -->
+    <ImageButton
+        android:id="@+id/widget_btn_action"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:src="@mipmap/launcher_icon"
+        android:scaleType="fitCenter"
+        android:background="@android:color/transparent"
+        android:clickable="true"
+        android:focusable="false"
+        android:contentDescription="Start Focus Lock" />
+
+</LinearLayout>
