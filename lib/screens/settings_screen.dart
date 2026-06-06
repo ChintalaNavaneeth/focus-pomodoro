@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/theme_provider.dart';
+import '../services/platform_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -106,15 +108,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   const SizedBox(height: 8),
 
-                  // ── THEME ──────────────────────────────────────────────
-                  _sectionLabel('THEME', theme),
+                  // ── APP THEME ──────────────────────────────────────────
+                  _sectionLabel('CUSTOM THEME', theme),
                   const SizedBox(height: 4),
                   Text(
-                    'Changes the accent color and background of the entire app instantly.',
+                    'Tap to choose custom hex colors or use the color slider.',
                     style: TextStyle(color: theme.text.withOpacity(0.45), fontSize: 12, height: 1.4),
                   ),
                   const SizedBox(height: 16),
-                  _buildThemePicker(theme),
+                  _buildCustomThemePicker(theme),
 
                   _divider(theme),
 
@@ -190,52 +192,146 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Divider(color: theme.text.withOpacity(0.1), thickness: 1),
       );
 
-  // ── Theme Picker ────────────────────────────────────────────────────────────
-  Widget _buildThemePicker(AppThemeOption selectedTheme) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: kThemeOptions.map((option) {
-        final isSelected = option.name == selectedTheme.name;
-        return GestureDetector(
-          onTap: () => ref.read(appThemeProvider.notifier).setTheme(option),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: option.accent,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? Colors.white : Colors.transparent,
-                width: 2.5,
+  // ── Custom Theme Picker ──────────────────────────────────────────────────
+  Widget _buildCustomThemePicker(AppThemeOption theme) {
+    return Column(
+      children: [
+        _buildColorRow('Background Color', theme.background, theme, (color) {
+          ref.read(appThemeProvider.notifier).setTheme(color, theme.accent);
+        }),
+        const SizedBox(height: 10),
+        _buildColorRow('Accent & Text Color', theme.accent, theme, (color) {
+          ref.read(appThemeProvider.notifier).setTheme(theme.background, color);
+        }),
+      ],
+    );
+  }
+
+  Widget _buildColorRow(String title, Color color, AppThemeOption theme, ValueChanged<Color> onColorChanged) {
+    return GestureDetector(
+      onTap: () => _showColorPicker(title, color, theme, onColorChanged),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: theme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.text.withOpacity(0.08), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.text.withOpacity(0.2), width: 1),
               ),
-              boxShadow: null,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(option.emoji, style: const TextStyle(fontSize: 14)),
-                const SizedBox(width: 6),
-                Text(
-                  option.name,
-                  style: TextStyle(
-                    color: option.isDark ? Colors.black : Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+            const SizedBox(width: 14),
+            Text(
+              title,
+              style: TextStyle(
+                color: theme.text.withOpacity(0.55),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '#${color.value.toRadixString(16).substring(2).toUpperCase()}',
+              style: TextStyle(
+                color: theme.accent,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.colorize_rounded, color: theme.text.withOpacity(0.3), size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showColorPicker(String title, Color currentColor, AppThemeOption theme, ValueChanged<Color> onSaved) {
+    Color tempColor = currentColor;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: theme.text.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title.toUpperCase(),
+                style: TextStyle(color: theme.accent, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2),
+              ),
+              const SizedBox(height: 20),
+              ColorPicker(
+                pickerColor: tempColor,
+                onColorChanged: (c) => tempColor = c,
+                colorPickerWidth: 300,
+                pickerAreaHeightPercent: 0.7,
+                enableAlpha: false,
+                displayThumbColor: true,
+                hexInputBar: true,
+                labelTypes: const [],
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: theme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: theme.text.withOpacity(0.1)),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text('Cancel', style: TextStyle(color: theme.text, fontWeight: FontWeight.w700)),
+                    ),
                   ),
                 ),
-                if (isSelected) ...[
-                  const SizedBox(width: 6),
-                  Icon(Icons.check_circle_rounded,
-                      size: 14,
-                      color: option.isDark ? Colors.black : Colors.white),
-                ],
-              ],
-            ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      onSaved(tempColor);
+                      Navigator.pop(ctx);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: theme.accent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text('Save', style: TextStyle(color: theme.isDark ? Colors.black : Colors.white, fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                ),
+              ]),
+            ],
           ),
         );
-      }).toList(),
+      },
     );
   }
 

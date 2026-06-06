@@ -13,60 +13,17 @@ class AppThemeOption {
   final Color text;
   final bool isDark;
 
-  const AppThemeOption({
-    required this.name,
-    required this.emoji,
+  AppThemeOption({
+    this.name = 'CUSTOM THEME',
+    this.emoji = '🎨',
     required this.accent,
     required this.background,
-    required this.surface,
-    required this.text,
-    this.isDark = false,
-  });
+  })  : isDark = background.computeLuminance() < 0.5,
+        text = background.computeLuminance() < 0.5 ? Colors.white : Colors.black,
+        surface = background.computeLuminance() < 0.5 
+            ? Color.lerp(background, Colors.white, 0.08)!
+            : Color.lerp(background, Colors.black, 0.06)!;
 }
-
-const List<AppThemeOption> kThemeOptions = [
-  AppThemeOption(
-    name: 'ELECTRIC BLUE',
-    emoji: '⚡',
-    accent: Color(0xFF2563EB),
-    background: Color(0xFFE8F0FF),
-    surface: Color(0xFFD8E6FF),
-    text: Colors.black,
-  ),
-  AppThemeOption(
-    name: 'FOCUS ORANGE',
-    emoji: '🔥',
-    accent: Color(0xFFEC6530),
-    background: Color(0xFFFFE3E3),
-    surface: Color(0xFFFFD0C0),
-    text: Colors.black,
-  ),
-  AppThemeOption(
-    name: 'CYBER GREEN',
-    emoji: '🌿',
-    accent: Color(0xFF16A34A),
-    background: Color(0xFFE4F7EC),
-    surface: Color(0xFFCCF0D8),
-    text: Colors.black,
-  ),
-  AppThemeOption(
-    name: 'VIOLET PULSE',
-    emoji: '💜',
-    accent: Color(0xFF7C3AED),
-    background: Color(0xFFF0E8FF),
-    surface: Color(0xFFE2D5FF),
-    text: Colors.black,
-  ),
-  AppThemeOption(
-    name: 'VOID BLACK',
-    emoji: '🖤',
-    accent: Color(0xFFFFFFFF),
-    background: Color(0xFF000000),
-    surface: Color(0xFF111111),
-    text: Colors.white,
-    isDark: true,
-  ),
-];
 
 // ─── Preset Timings ───────────────────────────────────────────────────────────
 
@@ -98,7 +55,8 @@ class PresetTimings {
 
 // ─── Persistence Keys ─────────────────────────────────────────────────────────
 
-const String _kThemeIndexKey = 'app_theme_index';
+const String _kThemeBgKey = 'app_theme_bg_color';
+const String _kThemeAccentKey = 'app_theme_accent_color';
 
 String _presetNameKey(int i) => 'preset_${i}_name';
 String _presetSecsKey(int i) => 'preset_${i}_seconds';
@@ -106,21 +64,26 @@ String _presetSecsKey(int i) => 'preset_${i}_seconds';
 // ─── Theme Provider ───────────────────────────────────────────────────────────
 
 class AppThemeNotifier extends StateNotifier<AppThemeOption> {
-  AppThemeNotifier() : super(kThemeOptions[0]) {
+  AppThemeNotifier() : super(AppThemeOption(background: const Color(0xFF000000), accent: const Color(0xFFFFFFFF))) {
     _load();
   }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final index = prefs.getInt(_kThemeIndexKey) ?? 0;
-    final clamped = index.clamp(0, kThemeOptions.length - 1);
-    state = kThemeOptions[clamped];
+    final bgVal = prefs.getInt(_kThemeBgKey);
+    final accVal = prefs.getInt(_kThemeAccentKey);
+    
+    final bg = bgVal != null ? Color(bgVal) : const Color(0xFF000000);
+    final accent = accVal != null ? Color(accVal) : const Color(0xFFFFFFFF);
+    
+    state = AppThemeOption(background: bg, accent: accent);
   }
 
-  Future<void> setTheme(AppThemeOption option) async {
-    state = option;
+  Future<void> setTheme(Color background, Color accent) async {
+    state = AppThemeOption(background: background, accent: accent);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kThemeIndexKey, kThemeOptions.indexOf(option));
+    await prefs.setInt(_kThemeBgKey, background.value);
+    await prefs.setInt(_kThemeAccentKey, accent.value);
   }
 }
 
