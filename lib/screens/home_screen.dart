@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/theme_provider.dart';
 import '../services/platform_service.dart';
 import 'focus_lock_screen.dart';
@@ -20,7 +21,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late FixedExtentScrollController _secondsController;
 
   int _selectedHours = 0;
-  int _selectedMinutes = 15;
+  int _selectedMinutes = 0;
   int _selectedSeconds = 0;
 
   bool _checkingStatus = true;
@@ -29,17 +30,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void initState() {
     super.initState();
-    // Initialize to the first preset's duration
-    final initialSecs = ref.read(presetTimingsProvider).presets[0].seconds;
-    _selectedHours = initialSecs ~/ 3600;
-    _selectedMinutes = (initialSecs % 3600) ~/ 60;
-    _selectedSeconds = initialSecs % 60;
-
-    _hoursController = FixedExtentScrollController(initialItem: _selectedHours);
-    _minutesController =
-        FixedExtentScrollController(initialItem: _selectedMinutes);
-    _secondsController =
-        FixedExtentScrollController(initialItem: _selectedSeconds);
+    _hoursController = FixedExtentScrollController(initialItem: 0);
+    _minutesController = FixedExtentScrollController(initialItem: 0);
+    _secondsController = FixedExtentScrollController(initialItem: 0);
     WidgetsBinding.instance.addObserver(this);
     _checkAppAndPermissionState();
   }
@@ -60,6 +53,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Future<void> _checkAppAndPermissionState() async {
     setState(() => _checkingStatus = true);
+    
+    // Load the user's actual saved first preset for the dial
+    final prefs = await SharedPreferences.getInstance();
+    final firstPresetSecs = prefs.getInt('preset_0_seconds') ?? 1500;
+    if (mounted) {
+      setState(() {
+        _selectedHours = firstPresetSecs ~/ 3600;
+        _selectedMinutes = (firstPresetSecs % 3600) ~/ 60;
+        _selectedSeconds = firstPresetSecs % 60;
+        _hoursController.jumpToItem(_selectedHours);
+        _minutesController.jumpToItem(_selectedMinutes);
+        _secondsController.jumpToItem(_selectedSeconds);
+      });
+    }
+
     final isRunning = await PlatformService.isFocusRunning();
     if (isRunning && mounted) {
       final secondsLeft = await PlatformService.getSecondsRemaining();
@@ -227,11 +235,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: presets.presets
-                    .map((p) => _buildPresetChip(p, theme))
-                    .toList(),
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: _buildPresetChip(presets.presets[0], theme)),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildPresetChip(presets.presets[1], theme)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: _buildPresetChip(presets.presets[2], theme)),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildPresetChip(presets.presets[3], theme)),
+                    ],
+                  ),
+                ],
               ),
               const Spacer(),
               // ── Start Button ───────────────────────────────────────
@@ -474,7 +495,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       onTap: () => _applyPreset(seconds),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? theme.accent : theme.surface,
           borderRadius: BorderRadius.circular(12),
@@ -511,11 +533,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildStartButton(AppThemeOption theme) {
+    final totalSelected =
+        _selectedHours * 3600 + _selectedMinutes * 60 + _selectedSeconds;
+    final isDisabled = totalSelected == 0;
+
     return GestureDetector(
-      onTap: _startFocusSession,
-      child: Container(
+      onTap: isDisabled ? null : _startFocusSession,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: theme.accent,
+          color: isDisabled ? theme.text.withOpacity(0.1) : theme.accent,
           borderRadius: BorderRadius.circular(16),
         ),
         padding: const EdgeInsets.symmetric(vertical: 20),
@@ -523,7 +550,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Text(
           'START FOCUS LOCK',
           style: TextStyle(
-            color: theme.isDark ? Colors.black : Colors.white,
+            color: isDisabled 
+                ? theme.text.withOpacity(0.3) 
+                : (theme.isDark ? Colors.black : Colors.white),
             fontSize: 16,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.2,

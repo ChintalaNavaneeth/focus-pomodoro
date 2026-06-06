@@ -83,10 +83,10 @@ class PresetTimings {
   const PresetTimings(this.presets);
 
   static const defaults = PresetTimings([
-    PresetTiming(name: "Quick Break", seconds: 900),
     PresetTiming(name: "Pomodoro", seconds: 1500),
-    PresetTiming(name: "Deep Work", seconds: 2700),
-    PresetTiming(name: "Long Focus", seconds: 3600),
+    PresetTiming(name: "Short Break", seconds: 300),
+    PresetTiming(name: "Long Break", seconds: 900),
+    PresetTiming(name: "Deep Work", seconds: 3600),
   ]);
 
   PresetTimings copyWith(int index, String name, int seconds) {
