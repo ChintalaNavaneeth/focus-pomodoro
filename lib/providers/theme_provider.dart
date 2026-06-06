@@ -57,9 +57,55 @@ class PresetTimings {
 
 const String _kThemeBgKey = 'app_theme_bg_color';
 const String _kThemeAccentKey = 'app_theme_accent_color';
+const String _kEinkModeKey = 'app_eink_mode';
+const String _kEinkDarkKey = 'app_eink_dark_mode';
 
 String _presetNameKey(int i) => 'preset_${i}_name';
 String _presetSecsKey(int i) => 'preset_${i}_seconds';
+
+// ─── E-Ink Providers ──────────────────────────────────────────────────────────
+
+class EInkModeNotifier extends StateNotifier<bool> {
+  EInkModeNotifier() : super(false) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool(_kEinkModeKey) ?? false;
+  }
+
+  Future<void> toggle(bool value) async {
+    state = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kEinkModeKey, value);
+  }
+}
+
+class EInkDarkModeNotifier extends StateNotifier<bool> {
+  EInkDarkModeNotifier() : super(false) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool(_kEinkDarkKey) ?? false;
+  }
+
+  Future<void> toggle(bool value) async {
+    state = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kEinkDarkKey, value);
+  }
+}
+
+final eInkModeProvider = StateNotifierProvider<EInkModeNotifier, bool>((ref) {
+  return EInkModeNotifier();
+});
+
+final eInkDarkModeProvider = StateNotifierProvider<EInkDarkModeNotifier, bool>((ref) {
+  return EInkDarkModeNotifier();
+});
 
 // ─── Theme Provider ───────────────────────────────────────────────────────────
 
@@ -90,6 +136,30 @@ class AppThemeNotifier extends StateNotifier<AppThemeOption> {
 final appThemeProvider =
     StateNotifierProvider<AppThemeNotifier, AppThemeOption>((ref) {
   return AppThemeNotifier();
+});
+
+final activeThemeProvider = Provider<AppThemeOption>((ref) {
+  final baseTheme = ref.watch(appThemeProvider);
+  final isEink = ref.watch(eInkModeProvider);
+  final isEinkDark = ref.watch(eInkDarkModeProvider);
+
+  if (!isEink) return baseTheme;
+
+  if (isEinkDark) {
+    return AppThemeOption(
+      name: 'E-INK DARK',
+      emoji: '📓',
+      background: Colors.black,
+      accent: Colors.white,
+    );
+  } else {
+    return AppThemeOption(
+      name: 'E-INK LIGHT',
+      emoji: '📰',
+      background: Colors.white,
+      accent: Colors.black,
+    );
+  }
 });
 
 // ─── Preset Timings Provider ──────────────────────────────────────────────────

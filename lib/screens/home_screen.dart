@@ -113,7 +113,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ));
       return;
     }
-    final success = await PlatformService.startFocus(totalSeconds);
+    final theme = ref.read(activeThemeProvider);
+    final success = await PlatformService.startFocus(
+      totalSeconds,
+      theme.background.value,
+      theme.accent.value,
+    );
     if (success && mounted) {
       Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => FocusLockScreen(initialSeconds: totalSeconds),
@@ -145,7 +150,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = ref.watch(appThemeProvider);
+    final theme = ref.watch(activeThemeProvider);
+    final isEink = ref.watch(eInkModeProvider);
     final presets = ref.watch(presetTimingsProvider);
 
     if (_checkingStatus) {
@@ -205,7 +211,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               // Duration pill summary
               Center(
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: isEink ? Duration.zero : const Duration(milliseconds: 200),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   decoration: BoxDecoration(
@@ -479,6 +485,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildPresetChip(PresetTiming preset, AppThemeOption theme) {
+    final isEink = ref.watch(eInkModeProvider);
     final seconds = preset.seconds;
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
@@ -497,7 +504,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () => _applyPreset(seconds),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: isEink ? Duration.zero : const Duration(milliseconds: 150),
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(

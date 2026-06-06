@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.app.AppOpsManager
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.antigravity.pomodoro/lock"
@@ -28,9 +29,13 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "startFocus" -> {
-                    val durationSeconds = call.argument<Int>("duration_seconds") ?: 1500
+                    val durationSeconds = call.argument<Number>("duration_seconds")?.toInt() ?: 1500
+                    val bgColor = call.argument<Number>("background_color")?.toLong()?.toInt() ?: 0xFF000000.toInt()
+                    val accentColor = call.argument<Number>("accent_color")?.toLong()?.toInt() ?: 0xFFEC6530.toInt()
                     val intent = Intent(this, FocusSessionService::class.java).apply {
                         putExtra("duration_seconds", durationSeconds)
+                        putExtra("background_color", bgColor)
+                        putExtra("accent_color", accentColor)
                     }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         startForegroundService(intent)
@@ -71,6 +76,13 @@ class MainActivity : FlutterActivity() {
                 }
                 "requestDeviceAdmin" -> {
                     requestDeviceAdmin()
+                    result.success(null)
+                }
+                "hasUsageStatsPermission" -> {
+                    result.success(hasUsageStatsPermission())
+                }
+                "requestUsageStatsPermission" -> {
+                    requestUsageStatsPermission()
                     result.success(null)
                 }
                 "requestOverlayPermission" -> {
@@ -159,5 +171,32 @@ class MainActivity : FlutterActivity() {
             putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required to lock the screen automatically during focus lockdown.")
         }
         startActivity(intent)
+    }
+
+    private fun hasUsageStatsPermission(): Boolean {
+        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+        } else {
+            appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+        }
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
+
+    private fun requestUsageStatsPermission() {
+        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val uri = Uri.fromParts("package", packageName, null)
+            data = uri
+        }
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            // Fallback if specific package intent fails
+            val fallbackIntent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(fallbackIntent)
+        }
     }
 }

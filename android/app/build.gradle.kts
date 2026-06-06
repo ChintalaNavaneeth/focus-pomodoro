@@ -43,3 +43,7 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+base {
+    archivesName.set("Focus")
+}

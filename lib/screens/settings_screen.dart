@@ -72,7 +72,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ref.watch(appThemeProvider);
+    final theme = ref.watch(activeThemeProvider);
+    final baseTheme = ref.watch(appThemeProvider);
+    final isEink = ref.watch(eInkModeProvider);
+    final isEinkDark = ref.watch(eInkDarkModeProvider);
     final presets = ref.watch(presetTimingsProvider);
 
     return Scaffold(
@@ -116,7 +119,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     style: TextStyle(color: theme.text.withOpacity(0.45), fontSize: 12, height: 1.4),
                   ),
                   const SizedBox(height: 16),
-                  _buildCustomThemePicker(theme),
+                  _buildCustomThemePicker(baseTheme, theme),
+
+                  _divider(theme),
+
+                  // ── E-INK MODE ─────────────────────────────────────────
+                  _sectionLabel('E-INK DISPLAY', theme),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Optimizes the interface for E-Ink displays by forcing pure Black & White and disabling animations.',
+                    style: TextStyle(color: theme.text.withOpacity(0.45), fontSize: 12, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildEinkToggleRow(theme, isEink, isEinkDark),
 
                   _divider(theme),
 
@@ -192,16 +207,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Divider(color: theme.text.withOpacity(0.1), thickness: 1),
       );
 
-  // ── Custom Theme Picker ──────────────────────────────────────────────────
-  Widget _buildCustomThemePicker(AppThemeOption theme) {
+  // ── E-Ink Toggle ─────────────────────────────────────────────────────────
+  Widget _buildEinkToggleRow(AppThemeOption theme, bool isEink, bool isEinkDark) {
     return Column(
       children: [
-        _buildColorRow('Background Color', theme.background, theme, (color) {
-          ref.read(appThemeProvider.notifier).setTheme(color, theme.accent);
+        _buildToggleRow(
+          'E-Ink Mode',
+          isEink,
+          theme,
+          (val) => ref.read(eInkModeProvider.notifier).toggle(val),
+        ),
+        if (isEink) ...[
+          const SizedBox(height: 10),
+          _buildToggleRow(
+            'Dark Mode',
+            isEinkDark,
+            theme,
+            (val) => ref.read(eInkDarkModeProvider.notifier).toggle(val),
+          ),
+        ]
+      ],
+    );
+  }
+
+  Widget _buildToggleRow(String title, bool value, AppThemeOption theme, ValueChanged<bool> onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.text.withOpacity(0.08), width: 1.5),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: theme.text.withOpacity(0.85),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Switch(
+            value: value,
+            activeColor: theme.accent,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Custom Theme Picker ──────────────────────────────────────────────────
+  Widget _buildCustomThemePicker(AppThemeOption baseTheme, AppThemeOption displayTheme) {
+    return Column(
+      children: [
+        _buildColorRow('Background Color', baseTheme.background, displayTheme, (color) {
+          ref.read(appThemeProvider.notifier).setTheme(color, baseTheme.accent);
         }),
         const SizedBox(height: 10),
-        _buildColorRow('Accent & Text Color', theme.accent, theme, (color) {
-          ref.read(appThemeProvider.notifier).setTheme(theme.background, color);
+        _buildColorRow('Accent & Text Color', baseTheme.accent, displayTheme, (color) {
+          ref.read(appThemeProvider.notifier).setTheme(baseTheme.background, color);
         }),
       ],
     );

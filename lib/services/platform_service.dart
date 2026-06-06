@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 class PlatformService {
   static const MethodChannel _channel = MethodChannel('com.antigravity.pomodoro/lock');
 
-  static Future<bool> startFocus(int durationSeconds) async {
+  static Future<bool> startFocus(int durationSeconds, int backgroundColor, int accentColor) async {
     try {
       final bool? result = await _channel.invokeMethod<bool>('startFocus', {
         'duration_seconds': durationSeconds,
+        'background_color': backgroundColor,
+        'accent_color': accentColor,
       });
       return result ?? false;
     } on PlatformException catch (e) {
@@ -114,6 +116,24 @@ class PlatformService {
       await _channel.invokeMethod('requestDeviceAdmin');
     } on PlatformException catch (e) {
       print("Failed to request device admin: ${e.message}");
+    }
+  }
+
+  static Future<bool> hasUsageStatsPermission() async {
+    try {
+      final bool? result = await _channel.invokeMethod<bool>('hasUsageStatsPermission');
+      return result ?? false;
+    } on PlatformException catch (e) {
+      print("Failed to check Usage Stats permission: ${e.message}");
+      return false;
+    }
+  }
+
+  static Future<void> requestUsageStatsPermission() async {
+    try {
+      await _channel.invokeMethod('requestUsageStatsPermission');
+    } on PlatformException catch (e) {
+      print("Failed to request Usage Stats permission: \${e.message}");
     }
   }
 }

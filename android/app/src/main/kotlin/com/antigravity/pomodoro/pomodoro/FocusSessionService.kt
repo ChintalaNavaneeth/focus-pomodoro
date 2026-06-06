@@ -20,6 +20,10 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import androidx.core.graphics.ColorUtils
+import android.graphics.drawable.GradientDrawable
+import android.util.TypedValue
+import android.telecom.TelecomManager
 import java.util.Locale
 
 class FocusSessionService : Service() {
@@ -30,9 +34,25 @@ class FocusSessionService : Service() {
     private var secondsRemaining = 0L
     private var isTimerRunning = false
     private var isOverlayVisible = false
+    private var themeBgColor = 0xFF000000.toInt()
+    private var themeAccentColor = 0xFFEC6530.toInt()
 
     private lateinit var telephonyManager: TelephonyManager
     private var phoneStateListener: PhoneStateListener? = null
+
+    private var foregroundAppPoller: Runnable? = null
+    private val foregroundAppHandler = Handler(Looper.getMainLooper())
+
+    // Grace period handler: gives the user time to place a call from the dialer.
+    // If no call is initiated within this time, the overlay is restored.
+    private val dialerGraceHandler = Handler(Looper.getMainLooper())
+    private val dialerGraceRunnable = Runnable {
+        if (isTimerRunning && telephonyManager.callState == TelephonyManager.CALL_STATE_IDLE) {
+            Log.d("FocusSessionService", "Dialer grace period expired with no call made. Restoring overlay.")
+            showOverlay()
+            lockHandler.postDelayed(lockRunnable, 1000)
+        }
+    }
 
     private var screenReceiver: BroadcastReceiver? = null
     private val lockHandler = Handler(Looper.getMainLooper())
@@ -84,6 +104,9 @@ class FocusSessionService : Service() {
 
         val durationSeconds = intent?.getIntExtra("duration_seconds", 1500) ?: 1500
         secondsRemaining = durationSeconds.toLong()
+        
+        themeBgColor = intent?.getIntExtra("background_color", 0xFF000000.toInt()) ?: 0xFF000000.toInt()
+        themeAccentColor = intent?.getIntExtra("accent_color", 0xFFEC6530.toInt()) ?: 0xFFEC6530.toInt()
 
         startForegroundNotification()
         startFocusSession()
@@ -151,6 +174,17 @@ class FocusSessionService : Service() {
         Log.d("FocusSessionService", "Focus session started. Device will lock in 3 seconds.")
     }
 
+    private fun stopForegroundAppPoller() {
+        foregroundAppPoller?.let {
+            foregroundAppHandler.removeCallbacks(it)
+        }
+        foregroundAppPoller = null
+    }
+
+    private fun cancelDialerGrace() {
+        dialerGraceHandler.removeCallbacks(dialerGraceRunnable)
+    }
+
     private fun stopFocusSession() {
         isTimerRunning = false
         timer?.cancel()
@@ -164,8 +198,11 @@ class FocusSessionService : Service() {
 
         // 2. Remove Overlay
         hideOverlay()
+        
+        // 3. Cancel grace period and poller
+        cancelDialerGrace()
 
-        // 3. Update Widget
+        // 4. Update Widget
         updateWidget("Focus", false)
 
         // 4. Broadcast Finished state
@@ -226,24 +263,51 @@ class FocusSessionService : Service() {
         inflater.inflate(R.layout.overlay_layout, container, true)
         overlayView = container
         
+        // Apply dynamic theme colors to overlay elements
+        overlayView?.findViewById<View>(R.id.overlay_root)?.setBackgroundColor(themeBgColor)
+        
+        val isDarkBg = ColorUtils.calculateLuminance(themeBgColor) < 0.5
+        val textColor = if (isDarkBg) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
+        
+        overlayView?.findViewById<TextView>(R.id.overlay_title)?.setTextColor(themeAccentColor)
+        overlayView?.findViewById<TextView>(R.id.overlay_timer_text)?.setTextColor(textColor)
+        overlayView?.findViewById<TextView>(R.id.overlay_status_text)?.setTextColor(themeAccentColor)
+        
+        // Find text views and card safely via IDs
+        val cardLayout = overlayView?.findViewById<View>(R.id.overlay_card)
+        
+        // Dynamically style the brutalist card
+        val cardDrawable = cardLayout?.background as? GradientDrawable
+        if (cardDrawable != null) {
+            cardDrawable.setColor(themeBgColor)
+            val strokeWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4f, resources.displayMetrics).toInt()
+            cardDrawable.setStroke(strokeWidth, textColor)
+        }
+        
+        overlayView?.findViewById<TextView>(R.id.overlay_minutes_text)?.setTextColor(themeAccentColor)
+        overlayView?.findViewById<TextView>(R.id.overlay_blocked_text)?.setTextColor(textColor)
+        
+        val btnDialer = overlayView?.findViewById<android.widget.Button>(R.id.overlay_btn_dialer)
+        btnDialer?.setTextColor(if (ColorUtils.calculateLuminance(themeAccentColor) < 0.5) 0xFFFFFFFF.toInt() else 0xFF000000.toInt())
+        btnDialer?.backgroundTintList = android.content.res.ColorStateList.valueOf(themeAccentColor)
+
         // Setup dialer button
         overlayView?.findViewById<View>(R.id.overlay_btn_dialer)?.setOnClickListener {
             val dialIntent = Intent(Intent.ACTION_DIAL).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             try {
-                // Cancel any pending 3-second screen lock so they have time to dial
+                // Cancel any pending screen lock so they have time to dial
                 lockHandler.removeCallbacks(lockRunnable)
+                cancelDialerGrace()
                 
-                startActivity(dialIntent)
                 hideOverlay()
+                startActivity(dialIntent)
                 
-                // Automatically restore overlay after 15 seconds if a call hasn't started
-                Handler(Looper.getMainLooper()).postDelayed({
-                    if (isTimerRunning && telephonyManager.callState == TelephonyManager.CALL_STATE_IDLE) {
-                        showOverlay()
-                    }
-                }, 15000)
+                // Give the user 10 seconds to place a call.
+                // If a call starts, the PhoneStateListener cancels this grace period.
+                // If no call is placed in time, the overlay is automatically restored.
+                dialerGraceHandler.postDelayed(dialerGraceRunnable, 10_000)
             } catch (e: Exception) {
                 Log.e("FocusSessionService", "Failed to launch dialer", e)
             }
@@ -304,14 +368,17 @@ class FocusSessionService : Service() {
                 when (state) {
                     TelephonyManager.CALL_STATE_RINGING,
                     TelephonyManager.CALL_STATE_OFFHOOK -> {
-                        // Temp hide the lock screen so calls can be answered/placed
+                        // Active call: cancel grace period (call has started), keep overlay hidden
+                        cancelDialerGrace()
                         hideOverlay()
                         Log.d("FocusSessionService", "Active Call: Hide Overlay")
                     }
                     TelephonyManager.CALL_STATE_IDLE -> {
-                        // Re-lock if the timer is still running
+                        // Call ended: cancel grace, restore overlay and re-lock
+                        cancelDialerGrace()
                         if (isTimerRunning) {
                             showOverlay()
+                            lockHandler.postDelayed(lockRunnable, 2000)
                         }
                         Log.d("FocusSessionService", "Phone Idle: Show Overlay")
                     }
