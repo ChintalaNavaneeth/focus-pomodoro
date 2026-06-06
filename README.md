@@ -16,7 +16,12 @@ This app is designed for deep focus. Once a focus session starts, it takes over 
 
 You can download the pre-compiled Android APK directly from the **[Releases page](https://github.com/ChintalaNavaneeth/focus-pomodoro/releases)**.
 
-Download the APK that matches your phone's architecture (usually `arm64-v8a` for most modern Android phones) and install it directly.
+When downloading, pick the APK that matches your phone's architecture:
+- **`arm64-v8a`**: Download this for almost all modern Android phones (built 2016 or newer).
+- **`armeabi-v7a`**: Download this only for much older or very low-end Android devices.
+- **`x86_64`**: Download this if you are running the app on a PC emulator (like Android Studio Emulator).
+
+If you are unsure, just try installing the `arm64-v8a` version first! If your phone isn't compatible, Android will simply tell you the app didn't install, and you can try the `armeabi-v7a` version instead.
 
 ## How to Run Locally
 
