@@ -85,6 +85,13 @@ class MainActivity : FlutterActivity() {
                     requestUsageStatsPermission()
                     result.success(null)
                 }
+                "hasAccessibilityPermission" -> {
+                    result.success(hasAccessibilityPermission())
+                }
+                "requestAccessibilityPermission" -> {
+                    requestAccessibilityPermission()
+                    result.success(null)
+                }
                 "requestOverlayPermission" -> {
                     requestOverlayPermission()
                     result.success(null)
@@ -171,6 +178,39 @@ class MainActivity : FlutterActivity() {
             putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required to lock the screen automatically during focus lockdown.")
         }
         startActivity(intent)
+    }
+
+    private fun hasAccessibilityPermission(): Boolean {
+        // Use the official API instead of parsing the settings string, which uses
+        // the full class name format (com.pkg/com.pkg.ClassName) that's easy to mismatch.
+        val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
+        val enabled = am.getEnabledAccessibilityServiceList(
+            android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+        )
+        return enabled.any {
+            it.resolveInfo.serviceInfo.packageName == packageName &&
+            it.resolveInfo.serviceInfo.name.contains("FocusAccessibilityService")
+        }
+    }
+
+    private fun requestAccessibilityPermission() {
+        // Try to deep-link directly to our service's accessibility settings page
+        try {
+            val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                val bundle = android.os.Bundle()
+                bundle.putString(":settings:fragment_args_key",
+                    "$packageName/.FocusAccessibilityService")
+                putExtra(":settings:show_fragment_args", bundle)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            // Fallback to generic accessibility settings
+            val fallback = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(fallback)
+        }
     }
 
     private fun hasUsageStatsPermission(): Boolean {

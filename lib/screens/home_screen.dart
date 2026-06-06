@@ -84,9 +84,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final hasVpn = await PlatformService.hasVpnPermission();
     final hasPhone = await PlatformService.hasPhonePermission();
     final hasAdmin = await PlatformService.hasDeviceAdmin();
+    final hasAccessibility = await PlatformService.hasAccessibilityPermission();
     if (mounted) {
       setState(() {
-        _hasAllPermissions = hasOverlay && hasVpn && hasPhone && hasAdmin;
+        _hasAllPermissions = hasOverlay && hasVpn && hasPhone && hasAdmin && hasAccessibility;
         _checkingStatus = false;
       });
     }

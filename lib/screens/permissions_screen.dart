@@ -16,6 +16,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   bool _hasPhone = false;
   bool _hasAdmin = false;
   bool _hasUsage = false;
+  bool _hasAccessibility = false;
   bool _checking = true;
 
   @override
@@ -45,6 +46,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     final hasPhone = await PlatformService.hasPhonePermission();
     final hasAdmin = await PlatformService.hasDeviceAdmin();
     final hasUsage = await PlatformService.hasUsageStatsPermission();
+    final hasAccessibility = await PlatformService.hasAccessibilityPermission();
 
     if (mounted) {
       setState(() {
@@ -53,10 +55,11 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
         _hasPhone = hasPhone;
         _hasAdmin = hasAdmin;
         _hasUsage = hasUsage;
+        _hasAccessibility = hasAccessibility;
         _checking = false;
       });
 
-      if (hasOverlay && hasVpn && hasPhone && hasAdmin && hasUsage) {
+      if (hasOverlay && hasVpn && hasPhone && hasAdmin && hasUsage && hasAccessibility) {
         widget.onPermissionsGranted();
       }
     }
@@ -150,17 +153,24 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
                             onRequest: () => PlatformService.requestUsageStatsPermission(),
                           ),
                           const SizedBox(height: 20),
+                          _buildBrutalistCard(
+                            title: "Accessibility Access",
+                            description: "Instantly detects home screen navigation and restores the lockdown overlay.",
+                            isGranted: _hasAccessibility,
+                            onRequest: () => PlatformService.requestAccessibilityPermission(),
+                          ),
+                          const SizedBox(height: 20),
                         ],
                       ),
               ),
               const SizedBox(height: 16),
               GestureDetector(
-                onTap: (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage)
+                onTap: (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility)
                     ? widget.onPermissionsGranted
                     : _checkAllPermissions,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage)
+                    color: (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility)
                         ? const Color(0xFFEC6530)
                         : const Color(0xFF8FDDDF),
                     borderRadius: BorderRadius.circular(4),
@@ -176,11 +186,11 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   alignment: Alignment.center,
                   child: Text(
-                    (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage)
+                    (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility)
                         ? "PROCEED TO FOCUS"
                         : "REFRESH STATUS",
                     style: TextStyle(
-                      color: (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage)
+                      color: (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility)
                           ? Colors.white
                           : Colors.black,
                       fontSize: 16,

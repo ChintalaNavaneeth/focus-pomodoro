@@ -95,6 +95,30 @@ class FocusSessionService : Service() {
         return if (isTimerRunning) secondsRemaining else 0L
     }
 
+    fun isSessionRunning(): Boolean = isTimerRunning
+
+    fun isOverlayShowing(): Boolean = isOverlayVisible
+
+    fun isPhoneInCall(): Boolean {
+        val state = telephonyManager.callState
+        return state == TelephonyManager.CALL_STATE_RINGING ||
+               state == TelephonyManager.CALL_STATE_OFFHOOK
+    }
+
+    fun getDialerPackage(): String? {
+        return try {
+            val telecom = getSystemService(TELECOM_SERVICE) as android.telecom.TelecomManager
+            telecom.defaultDialerPackage
+        } catch (e: Exception) { null }
+    }
+
+    /** Called by FocusAccessibilityService when an unauthorized app is foregrounded while overlay is hidden. */
+    fun onUnauthorizedAppDetected() {
+        cancelDialerGrace()
+        showOverlay()
+        lockHandler.post(lockRunnable)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         if (action == "STOP_SESSION") {
@@ -304,10 +328,10 @@ class FocusSessionService : Service() {
                 hideOverlay()
                 startActivity(dialIntent)
                 
-                // Give the user 10 seconds to place a call.
+                // Give the user 5 seconds to place a call.
                 // If a call starts, the PhoneStateListener cancels this grace period.
                 // If no call is placed in time, the overlay is automatically restored.
-                dialerGraceHandler.postDelayed(dialerGraceRunnable, 10_000)
+                dialerGraceHandler.postDelayed(dialerGraceRunnable, 5_000)
             } catch (e: Exception) {
                 Log.e("FocusSessionService", "Failed to launch dialer", e)
             }
@@ -466,7 +490,12 @@ class FocusSessionService : Service() {
             addAction(Intent.ACTION_USER_PRESENT)
             addAction(Intent.ACTION_SCREEN_OFF)
         }
-        registerReceiver(screenReceiver, filter)
+        // Android 14 (API 34) requires specifying the exported flag when registering receivers
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(screenReceiver, filter)
+        }
     }
 
     private fun unregisterScreenStateReceiver() {
