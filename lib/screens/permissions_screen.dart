@@ -65,10 +65,13 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     }
   }
 
+  bool get _allGranted =>
+      _hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFE3E3),
+      backgroundColor: const Color(0xFF000000),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
@@ -79,123 +82,108 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
               const Text(
                 "SYSTEM SETUP",
                 style: TextStyle(
-                  color: Color(0xFFEC6530),
-                  fontSize: 13,
+                  color: Colors.white54,
+                  fontSize: 11,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Lock Permissions",
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
+                  letterSpacing: 3,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               const Text(
-                "These permissions are strictly required to lock down internet, overlay screens, and automatically re-lock the screen if unlocked.",
+                "Lock Permissions",
                 style: TextStyle(
-                  color: Colors.black87,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  height: 1.4,
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 10),
+              const Text(
+                "These permissions are strictly required to lock down internet, overlay screens, and automatically re-lock the screen if unlocked.",
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
               Expanded(
                 child: _checking
                     ? const Center(
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEC6530)),
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          strokeWidth: 2,
                         ),
                       )
                     : ListView(
                         physics: const BouncingScrollPhysics(),
                         children: [
-                          _buildBrutalistCard(
+                          _buildPermissionRow(
                             title: "Overlay Window",
                             description: "Draws the strict Focus locker screen over other apps.",
                             isGranted: _hasOverlay,
                             onRequest: () => PlatformService.requestOverlayPermission(),
                           ),
-                          const SizedBox(height: 20),
-                          _buildBrutalistCard(
+                          _buildPermissionRow(
                             title: "VPN Access",
                             description: "Blocks internet access globally during the session.",
                             isGranted: _hasVpn,
                             onRequest: () => PlatformService.requestVpnPermission(),
                           ),
-                          const SizedBox(height: 20),
-                          _buildBrutalistCard(
+                          _buildPermissionRow(
                             title: "Telephony Hook",
                             description: "Allows answering standard calls by hiding the overlay temporarily.",
                             isGranted: _hasPhone,
                             onRequest: () => PlatformService.requestPhonePermission(),
                           ),
-                          const SizedBox(height: 20),
-                          _buildBrutalistCard(
+                          _buildPermissionRow(
                             title: "Strict Screen Lock",
                             description: "Enables automatic screen locking (Device Admin) if you unlock your phone.",
                             isGranted: _hasAdmin,
                             onRequest: () => PlatformService.requestDeviceAdmin(),
                           ),
-                          const SizedBox(height: 20),
-                          _buildBrutalistCard(
+                          _buildPermissionRow(
                             title: "App Usage Access",
                             description: "Detects if you open another app to enforce the lockdown rules.",
                             isGranted: _hasUsage,
                             onRequest: () => PlatformService.requestUsageStatsPermission(),
                           ),
-                          const SizedBox(height: 20),
-                          _buildBrutalistCard(
+                          _buildPermissionRow(
                             title: "Accessibility Access",
                             description: "Instantly detects home screen navigation and restores the lockdown overlay.",
                             isGranted: _hasAccessibility,
                             onRequest: () => PlatformService.requestAccessibilityPermission(),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 8),
                         ],
                       ),
               ),
               const SizedBox(height: 16),
               GestureDetector(
-                onTap: (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility)
-                    ? widget.onPermissionsGranted
-                    : _checkAllPermissions,
-                child: Container(
+                onTap: _allGranted ? widget.onPermissionsGranted : _checkAllPermissions,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
-                    color: (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility)
-                        ? const Color(0xFFEC6530)
-                        : const Color(0xFF8FDDDF),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.black, width: 3),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black,
-                        offset: Offset(4, 4),
-                        blurRadius: 0,
-                      )
-                    ],
+                    color: _allGranted ? Colors.white : const Color(0xFF1A1A1A),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _allGranted ? Colors.white : Colors.white24,
+                      width: 1.5,
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
                   alignment: Alignment.center,
                   child: Text(
-                    (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility)
-                        ? "PROCEED TO FOCUS"
-                        : "REFRESH STATUS",
+                    _allGranted ? "PROCEED TO FOCUS" : "REFRESH STATUS",
                     style: TextStyle(
-                      color: (_hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility)
-                          ? Colors.white
-                          : Colors.black,
-                      fontSize: 16,
+                      color: _allGranted ? Colors.black : Colors.white54,
+                      fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 1,
+                      letterSpacing: 1.2,
                     ),
                   ),
                 ),
@@ -208,104 +196,91 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     );
   }
 
-  Widget _buildBrutalistCard({
+  Widget _buildPermissionRow({
     required String title,
     required String description,
     required bool isGranted,
     required VoidCallback onRequest,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFE3E3),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.black, width: 3),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(4, 4),
-            blurRadius: 0,
-          )
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            isGranted ? Icons.check_box_outlined : Icons.check_box_outline_blank_outlined,
-            color: isGranted ? const Color(0xFF4CAF50) : Colors.black,
-            size: 26,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111111),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isGranted ? Colors.white12 : Colors.white12,
+            width: 1,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    color: Colors.black87,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (!isGranted)
-                  GestureDetector(
-                    onTap: onRequest,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF8FDDDF),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.black, width: 2.5),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black,
-                            offset: Offset(2.5, 2.5),
-                            blurRadius: 0,
-                          )
-                        ],
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      child: const Text(
-                        "GRANT",
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  const Row(
-                    children: [
-                      Icon(Icons.check, color: Color(0xFF4CAF50), size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        "ACTIVE",
-                        style: TextStyle(
-                          color: Color(0xFF4CAF50),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isGranted ? Colors.white : Colors.white10,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isGranted ? Icons.check : Icons.lock_outline,
+              color: isGranted ? Colors.black : Colors.white38,
+              size: 18,
             ),
           ),
-        ],
+          title: Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              color: isGranted ? Colors.white : Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              description,
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+            ),
+          ),
+          trailing: isGranted
+              ? const Text(
+                  "ACTIVE",
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
+                )
+              : GestureDetector(
+                  onTap: onRequest,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: const Text(
+                      "GRANT",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+        ),
       ),
     );
   }

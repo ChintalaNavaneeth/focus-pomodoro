@@ -31,7 +31,7 @@ class MainActivity : FlutterActivity() {
                 "startFocus" -> {
                     val durationSeconds = call.argument<Number>("duration_seconds")?.toInt() ?: 1500
                     val bgColor = call.argument<Number>("background_color")?.toLong()?.toInt() ?: 0xFF000000.toInt()
-                    val accentColor = call.argument<Number>("accent_color")?.toLong()?.toInt() ?: 0xFFEC6530.toInt()
+                    val accentColor = call.argument<Number>("accent_color")?.toLong()?.toInt() ?: 0xFFFFFFFF.toInt()
                     val intent = Intent(this, FocusSessionService::class.java).apply {
                         putExtra("duration_seconds", durationSeconds)
                         putExtra("background_color", bgColor)

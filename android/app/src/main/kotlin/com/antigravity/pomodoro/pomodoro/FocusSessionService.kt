@@ -35,7 +35,7 @@ class FocusSessionService : Service() {
     private var isTimerRunning = false
     private var isOverlayVisible = false
     private var themeBgColor = 0xFF000000.toInt()
-    private var themeAccentColor = 0xFFEC6530.toInt()
+    private var themeAccentColor = 0xFFFFFFFF.toInt()
 
     private lateinit var telephonyManager: TelephonyManager
     private var phoneStateListener: PhoneStateListener? = null
@@ -130,7 +130,7 @@ class FocusSessionService : Service() {
         secondsRemaining = durationSeconds.toLong()
         
         themeBgColor = intent?.getIntExtra("background_color", 0xFF000000.toInt()) ?: 0xFF000000.toInt()
-        themeAccentColor = intent?.getIntExtra("accent_color", 0xFFEC6530.toInt()) ?: 0xFFEC6530.toInt()
+        themeAccentColor = intent?.getIntExtra("accent_color", 0xFFFFFFFF.toInt()) ?: 0xFFFFFFFF.toInt()
 
         startForegroundNotification()
         startFocusSession()
@@ -419,26 +419,20 @@ class FocusSessionService : Service() {
     }
 
     private fun updateWidget(timerText: String, isRunning: Boolean) {
-        // Update the main text widget
-        val intent = Intent(this, FocusWidgetProvider::class.java).apply {
-            action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+        // Update the main text widget using a CUSTOM action to avoid
+        // conflict with the system's own ACTION_APPWIDGET_UPDATE broadcasts
+        // (which carry no extras and would reset the widget to idle state).
+        val intent = Intent("com.antigravity.pomodoro.WIDGET_UPDATE").apply {
+            `package` = packageName
         }
-        val ids = AppWidgetManager.getInstance(application).getAppWidgetIds(
-            ComponentName(application, FocusWidgetProvider::class.java)
-        )
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
         intent.putExtra("timer_text", timerText)
         intent.putExtra("is_running", isRunning)
         sendBroadcast(intent)
         
         // Update the 1x1 widget
-        val intent1x1 = Intent(this, Focus1x1WidgetProvider::class.java).apply {
-            action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+        val intent1x1 = Intent("com.antigravity.pomodoro.WIDGET_1X1_UPDATE").apply {
+            `package` = packageName
         }
-        val ids1x1 = AppWidgetManager.getInstance(application).getAppWidgetIds(
-            ComponentName(application, Focus1x1WidgetProvider::class.java)
-        )
-        intent1x1.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids1x1)
         intent1x1.putExtra("is_running", isRunning)
         sendBroadcast(intent1x1)
     }

@@ -63,6 +63,7 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.antigravity.pomodoro.START_WIDGET_TIMER" />
+                <action android:name="com.antigravity.pomodoro.WIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -76,6 +77,7 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.antigravity.pomodoro.START_1X1_WIDGET_TIMER" />
+                <action android:name="com.antigravity.pomodoro.WIDGET_1X1_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

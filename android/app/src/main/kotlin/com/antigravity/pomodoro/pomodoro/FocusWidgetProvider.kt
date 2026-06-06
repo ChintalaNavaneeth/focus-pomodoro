@@ -48,12 +48,13 @@ class FocusWidgetProvider : AppWidgetProvider() {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val ids = appWidgetManager.getAppWidgetIds(ComponentName(context, FocusWidgetProvider::class.java))
             updateWidgetUI(context, appWidgetManager, ids, "STARTING...", true)
-        } else if (action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
+        } else if (action == "com.antigravity.pomodoro.WIDGET_UPDATE") {
             val timerText = intent.getStringExtra("timer_text") ?: "Focus"
             val isRunning = intent.getBooleanExtra("is_running", false)
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val ids = appWidgetManager.getAppWidgetIds(ComponentName(context, FocusWidgetProvider::class.java))
-            
+            val ids = appWidgetManager.getAppWidgetIds(
+                ComponentName(context, FocusWidgetProvider::class.java)
+            )
             updateWidgetUI(context, appWidgetManager, ids, timerText, isRunning)
         }
     }

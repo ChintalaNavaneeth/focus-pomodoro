@@ -43,7 +43,7 @@ class Focus1x1WidgetProvider : AppWidgetProvider() {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val ids = appWidgetManager.getAppWidgetIds(ComponentName(context, Focus1x1WidgetProvider::class.java))
             updateWidgetUI(context, appWidgetManager, ids, true)
-        } else if (action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
+        } else if (action == "com.antigravity.pomodoro.WIDGET_1X1_UPDATE") {
             val isRunning = intent.getBooleanExtra("is_running", false)
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val ids = appWidgetManager.getAppWidgetIds(ComponentName(context, Focus1x1WidgetProvider::class.java))
