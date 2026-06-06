@@ -331,7 +331,7 @@ class FocusSessionService : Service() {
                 // Give the user 5 seconds to place a call.
                 // If a call starts, the PhoneStateListener cancels this grace period.
                 // If no call is placed in time, the overlay is automatically restored.
-                dialerGraceHandler.postDelayed(dialerGraceRunnable, 5_000)
+                dialerGraceHandler.postDelayed(dialerGraceRunnable, 20_000)
             } catch (e: Exception) {
                 Log.e("FocusSessionService", "Failed to launch dialer", e)
             }
