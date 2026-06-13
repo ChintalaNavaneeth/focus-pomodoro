@@ -119,23 +119,6 @@ class PlatformService {
     }
   }
 
-  static Future<bool> hasAccessibilityPermission() async {
-    try {
-      final bool? result = await _channel.invokeMethod<bool>('hasAccessibilityPermission');
-      return result ?? false;
-    } on PlatformException catch (e) {
-      print("Failed to check Accessibility permission: ${e.message}");
-      return false;
-    }
-  }
-
-  static Future<void> requestAccessibilityPermission() async {
-    try {
-      await _channel.invokeMethod('requestAccessibilityPermission');
-    } on PlatformException catch (e) {
-      print("Failed to request Accessibility permission: ${e.message}");
-    }
-  }
 
   static Future<bool> hasUsageStatsPermission() async {
     try {

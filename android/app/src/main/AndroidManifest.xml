@@ -99,20 +99,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- Accessibility Service for instant home-screen detection during focus sessions -->
-        <service
-            android:name=".FocusAccessibilityService"
-            android:label="Focus Session Guard"
-            android:exported="true"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/focus_accessibility_service" />
-        </service>
-
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

@@ -16,7 +16,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   bool _hasPhone = false;
   bool _hasAdmin = false;
   bool _hasUsage = false;
-  bool _hasAccessibility = false;
   bool _checking = true;
 
   @override
@@ -46,7 +45,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     final hasPhone = await PlatformService.hasPhonePermission();
     final hasAdmin = await PlatformService.hasDeviceAdmin();
     final hasUsage = await PlatformService.hasUsageStatsPermission();
-    final hasAccessibility = await PlatformService.hasAccessibilityPermission();
 
     if (mounted) {
       setState(() {
@@ -55,18 +53,17 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
         _hasPhone = hasPhone;
         _hasAdmin = hasAdmin;
         _hasUsage = hasUsage;
-        _hasAccessibility = hasAccessibility;
         _checking = false;
       });
 
-      if (hasOverlay && hasVpn && hasPhone && hasAdmin && hasUsage && hasAccessibility) {
+      if (hasOverlay && hasVpn && hasPhone && hasAdmin && hasUsage) {
         widget.onPermissionsGranted();
       }
     }
   }
 
   bool get _allGranted =>
-      _hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage && _hasAccessibility;
+      _hasOverlay && _hasVpn && _hasPhone && _hasAdmin && _hasUsage;
 
   @override
   Widget build(BuildContext context) {
@@ -151,12 +148,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
                             description: "Detects if you open another app to enforce the lockdown rules.",
                             isGranted: _hasUsage,
                             onRequest: () => PlatformService.requestUsageStatsPermission(),
-                          ),
-                          _buildPermissionRow(
-                            title: "Accessibility Access",
-                            description: "Instantly detects home screen navigation and restores the lockdown overlay.",
-                            isGranted: _hasAccessibility,
-                            onRequest: () => PlatformService.requestAccessibilityPermission(),
                           ),
                           const SizedBox(height: 8),
                         ],

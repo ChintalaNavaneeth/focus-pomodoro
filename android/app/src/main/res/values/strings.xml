@@ -3,5 +3,4 @@
     <string name="device_admin_description">Enables strict locking of the screen during Focus sessions.</string>
     <string name="widget_description">Start a strict Focus lock session directly from your home screen.</string>
     <string name="app_name">Focus</string>
-    <string name="accessibility_service_description">Monitors app switches during a Focus session so the lockdown overlay can be restored instantly if you leave the dialer.</string>
 </resources>

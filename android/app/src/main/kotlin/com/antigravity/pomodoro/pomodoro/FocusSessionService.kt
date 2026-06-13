@@ -23,6 +23,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.graphics.ColorUtils
 import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
+import android.app.usage.UsageStatsManager
 import android.telecom.TelecomManager
 import java.util.Locale
 
@@ -40,19 +41,12 @@ class FocusSessionService : Service() {
     private lateinit var telephonyManager: TelephonyManager
     private var phoneStateListener: PhoneStateListener? = null
 
-    private var foregroundAppPoller: Runnable? = null
-    private val foregroundAppHandler = Handler(Looper.getMainLooper())
-
-    // Grace period handler: gives the user time to place a call from the dialer.
-    // If no call is initiated within this time, the overlay is restored.
-    private val dialerGraceHandler = Handler(Looper.getMainLooper())
-    private val dialerGraceRunnable = Runnable {
-        if (isTimerRunning && telephonyManager.callState == TelephonyManager.CALL_STATE_IDLE) {
-            Log.d("FocusSessionService", "Dialer grace period expired with no call made. Restoring overlay.")
-            showOverlay()
-            lockHandler.postDelayed(lockRunnable, 1000)
-        }
-    }
+    // Dialer poller: watches for unauthorized app switches while the dialer is open.
+    // Runs every second between dialer tap and call start/end. Avoids needing an
+    // Accessibility Service while still closing the Home-button escape hatch.
+    private var dialerPoller: Runnable? = null
+    private val dialerPollerHandler = Handler(Looper.getMainLooper())
+    private var activeDialerPackage: String? = null
 
     private var screenReceiver: BroadcastReceiver? = null
     private val lockHandler = Handler(Looper.getMainLooper())
@@ -105,19 +99,6 @@ class FocusSessionService : Service() {
                state == TelephonyManager.CALL_STATE_OFFHOOK
     }
 
-    fun getDialerPackage(): String? {
-        return try {
-            val telecom = getSystemService(TELECOM_SERVICE) as android.telecom.TelecomManager
-            telecom.defaultDialerPackage
-        } catch (e: Exception) { null }
-    }
-
-    /** Called by FocusAccessibilityService when an unauthorized app is foregrounded while overlay is hidden. */
-    fun onUnauthorizedAppDetected() {
-        cancelDialerGrace()
-        showOverlay()
-        lockHandler.post(lockRunnable)
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
@@ -198,16 +179,52 @@ class FocusSessionService : Service() {
         Log.d("FocusSessionService", "Focus session started. Device will lock in 3 seconds.")
     }
 
-    private fun stopForegroundAppPoller() {
-        foregroundAppPoller?.let {
-            foregroundAppHandler.removeCallbacks(it)
+    // ── Dialer Poller ─────────────────────────────────────────────────────────
+
+    private fun startDialerPoller() {
+        stopDialerPoller()
+        dialerPoller = object : Runnable {
+            override fun run() {
+                if (!isTimerRunning) { stopDialerPoller(); return }
+                val fg = getForegroundApp()
+                val allowed = fg == null ||
+                    fg == packageName ||
+                    fg == activeDialerPackage ||
+                    fg.contains("systemui", ignoreCase = true) ||
+                    fg.contains("incallui", ignoreCase = true) ||
+                    fg.contains("dialer", ignoreCase = true)
+                if (!allowed) {
+                    Log.w("FocusSessionService", "Dialer poller: unauthorized app '$fg'. Restoring overlay.")
+                    stopDialerPoller()
+                    showOverlay()
+                    lockHandler.postDelayed(lockRunnable, 1000)
+                } else {
+                    dialerPollerHandler.postDelayed(this, 10)
+                }
+            }
         }
-        foregroundAppPoller = null
+        dialerPollerHandler.post(dialerPoller!!)
     }
 
-    private fun cancelDialerGrace() {
-        dialerGraceHandler.removeCallbacks(dialerGraceRunnable)
+    private fun stopDialerPoller() {
+        dialerPoller?.let { dialerPollerHandler.removeCallbacks(it) }
+        dialerPoller = null
+        activeDialerPackage = null
     }
+
+    private fun getForegroundApp(): String? {
+        return try {
+            val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val now = System.currentTimeMillis()
+            val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, now - 5000, now)
+            stats?.maxByOrNull { it.lastTimeUsed }?.packageName
+        } catch (e: Exception) {
+            Log.e("FocusSessionService", "Error getting foreground app", e)
+            null
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     private fun stopFocusSession() {
         isTimerRunning = false
@@ -222,9 +239,9 @@ class FocusSessionService : Service() {
 
         // 2. Remove Overlay
         hideOverlay()
-        
-        // 3. Cancel grace period and poller
-        cancelDialerGrace()
+
+        // 3. Stop dialer poller
+        stopDialerPoller()
 
         // 4. Update Widget
         updateWidget("Focus", false)
@@ -316,22 +333,31 @@ class FocusSessionService : Service() {
         btnDialer?.backgroundTintList = android.content.res.ColorStateList.valueOf(themeAccentColor)
 
         // Setup dialer button
+        // Launch the dialer FIRST, then hide the overlay after a brief delay (~150ms).
+        // This ensures the dialer is already rendered before the overlay disappears,
+        // eliminating the home screen flash that occurs if you hide first then launch.
         overlayView?.findViewById<View>(R.id.overlay_btn_dialer)?.setOnClickListener {
             val dialIntent = Intent(Intent.ACTION_DIAL).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             try {
-                // Cancel any pending screen lock so they have time to dial
+                // Capture the default dialer package so the poller can whitelist it
+                activeDialerPackage = try {
+                    (getSystemService(TELECOM_SERVICE) as TelecomManager).defaultDialerPackage
+                } catch (e: Exception) { null }
+
                 lockHandler.removeCallbacks(lockRunnable)
-                cancelDialerGrace()
-                
-                hideOverlay()
+
+                // Launch dialer first so it renders behind the overlay
                 startActivity(dialIntent)
-                
-                // Give the user 5 seconds to place a call.
-                // If a call starts, the PhoneStateListener cancels this grace period.
-                // If no call is placed in time, the overlay is automatically restored.
-                dialerGraceHandler.postDelayed(dialerGraceRunnable, 20_000)
+
+                // Hide overlay after a short delay — by then the dialer is on screen,
+                // so the transition is overlay → dialer with no home screen flash.
+                dialerPollerHandler.postDelayed({
+                    hideOverlay()
+                    startDialerPoller()
+                }, 150)
+
             } catch (e: Exception) {
                 Log.e("FocusSessionService", "Failed to launch dialer", e)
             }
@@ -392,14 +418,14 @@ class FocusSessionService : Service() {
                 when (state) {
                     TelephonyManager.CALL_STATE_RINGING,
                     TelephonyManager.CALL_STATE_OFFHOOK -> {
-                        // Active call: cancel grace period (call has started), keep overlay hidden
-                        cancelDialerGrace()
+                        // Active call: stop the dialer poller, keep overlay hidden
+                        stopDialerPoller()
                         hideOverlay()
                         Log.d("FocusSessionService", "Active Call: Hide Overlay")
                     }
                     TelephonyManager.CALL_STATE_IDLE -> {
-                        // Call ended: cancel grace, restore overlay and re-lock
-                        cancelDialerGrace()
+                        // Call ended (or user backed out of dialer): stop poller, restore overlay
+                        stopDialerPoller()
                         if (isTimerRunning) {
                             showOverlay()
                             lockHandler.postDelayed(lockRunnable, 2000)
@@ -453,6 +479,7 @@ class FocusSessionService : Service() {
         phoneStateListener?.let {
             telephonyManager.listen(it, PhoneStateListener.LISTEN_NONE)
         }
+        stopDialerPoller()
         unregisterScreenStateReceiver()
         lockHandler.removeCallbacks(lockRunnable)
         stopFocusSession()
